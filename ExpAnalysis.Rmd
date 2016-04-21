@@ -1,0 +1,97 @@
+---
+title: "ExpAnalysis SwiftKey"
+author: "Laura"
+date: "March 15, 2016"
+output: html_document
+---
+
+The purpose of this project is to **explore** the text data provided from twitter, blog and news feeds.
+
+This paper will examine the total word count, line count, and the top frequently used words and terms in the each data set extracted from blogs file. The frequency of the words and term will eventually be used to create a text prediction model.
+
+To begin we will read all of the data and store them in values.
+```{r, warning=FALSE}
+setwd("~/Capstone DataSci/SwiftKey/en_US")
+enblog <- file("en_US.blogs.txt", "r")
+strblog <- readLines(enblog)
+ennews <- file("en_US.news.txt", "r")
+strnews <- readLines(ennews)
+entwitter <- file("en_US.twitter.txt", "r")
+strtwitter <- readLines(entwitter)
+```
+
+##Lines of text in each file
+
+**blogs**
+```{r, warning=FALSE}
+length(strblog)
+```
+
+**news**
+```{r, warning=FALSE}
+length(strnews)
+```
+
+**twitter**
+```{r, warning=FALSE}
+length(strtwitter)
+```
+
+##Word Count of each file
+
+**blogs**
+```{r}
+sum(sapply(gregexpr("\\W+",strblog),length)+1)
+```
+
+**news**
+```{r}
+sum(sapply(gregexpr("\\W+",strnews),length)+1)
+```
+
+**twitter**
+```{r}
+sum(sapply(gregexpr("\\W+",strtwitter),length)+1)
+```
+
+##Frequency
+*For the purpose of this project only 1% of blog file will be explored for eventual logic creation to text prediction milestone project*
+
+Most frequently used words found in the blogs 
+```{r, warning=FALSE}
+library(tm)
+sublen <- round(length(strblog)*0.01)
+subblog <- strblog[1:sublen]
+neatblog <- paste(subblog, collapse = " ")
+cleanblog <- VectorSource(neatblog)
+blogcorpus <- Corpus(cleanblog)
+blogcorpus <- tm_map(blogcorpus, stripWhitespace)
+blogcorpus <- tm_map(blogcorpus, removePunctuation)
+blogcorpus <- tm_map(blogcorpus, content_transformer(tolower))
+blogcorpus <- tm_map(blogcorpus, removeNumbers)
+blogdtm <- DocumentTermMatrix(blogcorpus)
+dtm2 <- as.matrix(blogdtm)
+frequency <- colSums(dtm2)
+frequency <- sort(frequency, decreasing = TRUE)
+top20 <- head(frequency, 20)
+barplot(top20,border = NA, las=2,main = "Top 20 frequent words")
+```
+
+Frequency of Bigrams (2 word pair)
+```{r, warning=FALSE}
+library(RWeka)
+tokenizer <- function(x) NGramTokenizer(x, Weka_control(min = 2, max = 2))
+tdm <- TermDocumentMatrix(blogcorpus, control = list(tokenize = tokenizer))
+mtxdtm <- as.matrix(tdm)
+sortmtx <- mtxdtm[order(-mtxdtm[,1]),]
+sortmtx <- as.matrix(sortmtx)
+barplot(sortmtx[1:20,1],borders = NA, las=2, main = "Top 20 frequent 2gram")
+```
+
+##Proposed summary of prediction model
+
+1. A word of sentence will be entered by the user.
+2. The last word will be taken and match with the 2-gram matrix with the most frequent token starting with said word.
+3. If last word is not found in the 2-gram matrix then the most frequent 1-gram will be predicted.
+
+This model can be scaled up to include greater n-grams however will only be done at 2-gram to prove the logic.
